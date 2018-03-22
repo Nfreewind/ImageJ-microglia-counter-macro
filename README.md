@@ -6,3 +6,9 @@ To install, copy the .txt file to your ImageJ/plugins/Macros folder. Then go to 
 To run the macro:
 1. Open two 8-bit grayscale channels: one with DAPI and one with Iba1 (sample images on github). 
 2. Go to Plugins->Macros and click the "Microglia counter" at the bottom of the drop-down menu.
+
+IMPORTANT!
+
+For adequate quantitative measurements change the scaling in the macro .txt file.
+
+Change threshold settings according to your images.
