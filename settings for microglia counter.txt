@@ -1,0 +1,49 @@
+MG_distance_in_pixels = parseInt(call("ij.Prefs.get",   
+"MG.distance_in_pixels","1177"));
+MG_known_distance = parseInt(call("ij.Prefs.get",   
+"MG.known_distance","300"));
+MG_pixel_aspect_ratio = parseInt(call("ij.Prefs.get",   
+"MG.pixel_aspect_ratio","1"));
+MG_unit = call("ij.Prefs.get",   
+"MG.unit","um");
+MG_iba_threshold = parseFloat(call("ij.Prefs.get",   
+"MG.iba_threshold","2.4"));
+MG_dapi_threshold = parseFloat(call("ij.Prefs.get",   
+"MG.dapi_threshold","9.4"));
+MG_overlap = parseFloat(call("ij.Prefs.get",   
+"MG.overlap","0.55"));
+
+   Dialog.create("Microglia Counter Settings"); 
+   Dialog.addMessage("Scaling settings")
+   Dialog.addNumber("Distance in pixels", MG_distance_in_pixels,0,6,"px"); 
+   Dialog.addNumber("Known distance", MG_known_distance,0,6,""); 
+   Dialog.addNumber("Pixel aspect ratio", MG_pixel_aspect_ratio,0,6,""); 
+   Dialog.addString("Units", MG_unit,6); 
+   Dialog.addMessage("Threshold settings\nOpen Threshold settings to determine the best threshold % value");
+   Dialog.addNumber("Iba1 threshold", MG_iba_threshold,2,6,"%"); 
+   Dialog.addNumber("DAPI threshold", MG_dapi_threshold,2,6,"%"); 
+   Dialog.addMessage("Overlap settings\nAdjust the overlap ratio 0.00-1.00");
+   Dialog.addNumber("Overlap", MG_overlap,2,6,""); 
+   Dialog.show(); 
+   MG_distance_in_pixels = Dialog.getNumber(); 
+   MG_known_distance = Dialog.getNumber(); 
+   MG_pixel_aspect_ratio = Dialog.getNumber(); 
+   MG_unit = Dialog.getString(); 
+   MG_iba_threshold = Dialog.getNumber();
+   MG_dapi_threshold = Dialog.getNumber();
+   MG_overlap = Dialog.getNumber();
+   
+call("ij.Prefs.set", "MG.distance_in_pixels",toString 
+(MG_distance_in_pixels)); 
+call("ij.Prefs.set", "MG.known_distance",toString 
+(MG_known_distance));
+call("ij.Prefs.set", "MG.pixel_aspect_ratio",toString 
+(MG_pixel_aspect_ratio)); 
+call("ij.Prefs.set", "MG.unit",toString 
+(MG_unit)); 
+call("ij.Prefs.set", "MG.iba_threshold",toString 
+(MG_iba_threshold));
+call("ij.Prefs.set", "MG.dapi_threshold",toString 
+(MG_dapi_threshold)); 
+call("ij.Prefs.set", "MG.overlap",toString 
+(MG_overlap)); 

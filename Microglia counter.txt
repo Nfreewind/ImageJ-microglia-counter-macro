@@ -1,0 +1,162 @@
+//CHANGE USER SETTINGS HERE
+
+MG_distance_in_pixels = parseInt(call("ij.Prefs.get",   
+"MG.distance_in_pixels","1177"));
+MG_known_distance = parseInt(call("ij.Prefs.get",   
+"MG.known_distance","300"));
+MG_pixel_aspect_ratio = parseInt(call("ij.Prefs.get",   
+"MG.pixel_aspect_ratio","1"));
+MG_unit = call("ij.Prefs.get",   
+"MG.unit","um");
+MG_iba_threshold = parseFloat(call("ij.Prefs.get",   
+"MG.iba_threshold","2.4"));
+MG_dapi_threshold = parseFloat(call("ij.Prefs.get",   
+"MG.dapi_threshold","9.4"));
+MG_overlap = parseFloat(call("ij.Prefs.get",   
+"MG.overlap","0.55"));
+//USER SETTINGS END HERE
+
+
+//set default color to black, set scale 1:1, clear results window
+run("Set Scale...", "distance="+MG_distance_in_pixels+" known="+MG_known_distance+" pixel="+MG_pixel_aspect_ratio+" unit="+MG_unit+" global");
+run("Clear Results");
+
+//get filenames and mean values to establish which image is dapi and iba
+//darker image will be dapi; brighter image will be iba
+selectImage(1);
+img1 = getInfo("image.filename");
+getStatistics(area, mean);
+first = mean;
+selectImage(2);
+img2 = getInfo("image.filename");
+getStatistics(area, mean);
+second = mean;
+
+iba = "";
+dapi = "";
+if (first>second){
+	iba = img1;
+	dapi = img2;
+}
+if (second>first){
+	iba = img2;
+	dapi = img1;
+}
+//remember full paths for original images
+iba_dir = File.directory+iba; 
+dapi_dir = File.directory+dapi;
+
+//substract background noise from iba 
+selectImage(iba);
+getStatistics(area, mean);
+run("Subtract...", "value=mean");
+//threshold iba
+setAutoThreshold("Otsu dark");
+setThreshold(lower_threshold(MG_iba_threshold), 255);
+setOption("BlackBackground", false);
+run("Convert to Mask");
+//fill holes and analyze particles in iba
+run("Fill Holes");
+run("Analyze Particles...", "size=300-Infinity pixel show=Masks clear include in_situ");
+
+//substract background noise from dapi
+selectImage(dapi);
+getStatistics(area, mean);
+run("Subtract...", "value=mean");
+//threshold dapi
+setAutoThreshold("Otsu dark");
+run("Threshold...");
+setThreshold(lower_threshold(MG_dapi_threshold), 255);
+run("Convert to Mask");
+//fill holes, watershed and analyze particles in dapi
+run("Fill Holes");
+run("Watershed");
+//analyze partcles will add all nuclei from dapi to ROI manager
+run("Analyze Particles...", "size=300-Infinity pixel show=Masks clear include add in_situ");
+
+//create stack, divide both stack images by 2 and Z project
+run("Images to Stack", "name=Stack title=[] use");
+run("Divide...", "value=2.000 stack");
+run("Z Project...", "projection=[Average Intensity]");
+selectWindow("Stack");
+close();
+selectWindow("AVG_Stack");
+run("Invert LUT");
+
+
+run("Clear Results");
+selectWindow("AVG_Stack");
+nROI = roiManager("count");
+roi_array = newArray();
+overlap_array = newArray();
+
+//select each nucleus from ROI manager
+for (i=0; i<nROI; i++){
+	roiManager("select", i);
+	getStatistics(area, mean, min, max);
+	//if max intensity less than 128 - remove
+	if (max<128){
+		run("Cut");
+	}
+	//if max intensity is 128, calculate dapi/iba overlap
+	if (max==128){
+		overlap = (mean-64)/64;
+		//if overlap is more than threshold value, add the ROI index and overlap fraction
+		//to table. draw overlap values on image
+		if (overlap>MG_overlap){
+			overlap_array = Array.concat(overlap_array, overlap);
+			roi_index = roiManager("index");
+			roi_array = Array.concat(roi_array, roi_index);
+			Roi.getBounds(x, y, width, height); 
+    	    setFont("SanSerif", 16, "antialiased");
+    		Overlay.drawString(overlap, x, y-10);
+		}	
+	}
+//show drawn overlap values
+Overlay.show;
+}
+//show table with nucleus ROI index, overlap values and total number of doule-positive cells
+index = Array.getSequence(roi_array.length+1);
+index = Array.slice(index,1,index.length);
+Array.show("Cells found", index, roi_array, overlap_array);
+
+//create stack with processed image and two original images
+open(iba_dir);
+open(dapi_dir);
+run("Images to Stack", "name=Stack title=[] use");
+//make results window with stats
+getStatistics(area);
+nIBA = roi_array.length;
+run("Clear Results");
+setResult("Iba1-count", 0, nIBA);
+setResult("DAPI-count", 0, nROI);
+setResult("Iba1 %", 0, nIBA/nROI*100);
+setResult("Iba1 density (per mm2)", 0, nIBA/area*1000000);
+setResult("DAPI density (per mm2)", 0, nROI/area*1000000);
+setOption("ShowRowNumbers", false);
+updateResults;
+
+function lower_threshold(percent_threshold){
+
+	h = getHeight(); 
+	w = getWidth(); 
+	n = w*h; 
+	nBins = 256; 
+	histMin = 0; 
+	histMax = 255; 
+	getHistogram(values, counts, nBins); 
+	cum = newArray(nBins); 
+	cum[0] = counts[0]; 
+	cdf = newArray(nBins); 
+	cdf[0] = cum[0]/n; 
+	fBin = 0;
+	for (i = (histMin + 1); i < (histMax + 1); i++){ 
+        	cum[i] = counts[i] + cum[i-1]; 
+        	cdf[i] = cum[i]/n; 
+        	percent = cdf[i]*100;
+        	if ((100-percent)>=percent_threshold){
+				fBin = i;
+			}
+	} 
+	return fBin;
+}
